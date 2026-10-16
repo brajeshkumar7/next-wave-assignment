@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parent Decision Brief Demo</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#142635;background:#f5f7f5}
+    *{box-sizing:border-box} body{margin:0} a{color:#135f68} button,input,select,textarea{font:inherit}
+    button{cursor:pointer;border:0;border-radius:10px;padding:12px 17px;font-weight:700;background:#0e5961;color:white}
+    button:disabled{opacity:.55;cursor:not-allowed}.secondary{background:#e3edeb;color:#16484f}.ghost{background:white;color:#19545a;border:1px solid #c9d7d5}
+    header{background:#102c37;color:white;padding:19px 24px;border-bottom:5px solid #69b59e}
+    header .bar{max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:15px}
+    .brand{font-weight:800;letter-spacing:.02em}.brand span{color:#91dec6}
+    .tag{font-size:12px;padding:6px 10px;background:#244a53;border-radius:999px;color:#d9f1e9}
+    main{max-width:1100px;margin:36px auto;padding:0 22px 60px}
+    h1{font-size:clamp(30px,4vw,47px);line-height:1.08;margin:0 0 13px;letter-spacing:-.04em}
+    h2{font-size:21px;margin:0 0 12px;letter-spacing:-.02em} h3{font-size:15px;margin:0 0 8px}
+    p{line-height:1.55;margin:0 0 14px;color:#49616a}.eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:11px;font-weight:800;color:#317b7c;margin-bottom:10px}
+    .intro{max-width:760px;margin-bottom:25px}.layout{display:grid;grid-template-columns:1.42fr .85fr;gap:20px}
+    .card{background:white;border:1px solid #dfe8e5;border-radius:16px;padding:25px;box-shadow:0 12px 32px #132a3010;margin-bottom:20px}
+    .panel{background:#eaf3ef;border-radius:13px;padding:18px;margin:18px 0}.panel p:last-child{margin-bottom:0}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    label{display:block;font-size:12px;color:#46616a;font-weight:750;margin-bottom:6px}
+    input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd9d5;border-radius:9px;background:#fff;color:#19343d;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#2e8f8b;box-shadow:0 0 0 3px #48a69c24}
+    textarea{min-height:82px;resize:vertical}.field{margin-bottom:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:18px}
+    .small{font-size:12px;color:#647b82}.warn{background:#fff4df;border:1px solid #e9d6a6;color:#705418;padding:12px;border-radius:9px;margin:10px 0}
+    .ok{background:#e5f4e8;color:#1d6841;padding:12px;border-radius:9px;margin:10px 0}
+    .error{background:#fde9e7;color:#963d31;padding:12px;border-radius:9px;margin:10px 0}
+    .pill{display:inline-block;background:#e3edeb;color:#28606a;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;text-transform:uppercase}
+    .row{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #e7eeec}
+    .row:last-child{border:0}.row b{max-width:58%;text-align:right}.source{font-size:12px;padding:9px 0;border-bottom:1px solid #e7eeec}
+    .timeline{border-left:2px solid #9dcfc0;padding-left:15px}.timeline div{margin:0 0 12px;font-size:13px}
+    .question{padding:13px;background:#f4f8f6;border-radius:10px;margin:9px 0}.question small{display:block;color:#668083;margin-top:6px}
+    .copy{word-break:break-all;background:#f4f8f6;padding:12px;border-radius:8px;font-size:12px}
+    .muted{color:#60747a}.hidden{display:none}.spinner{display:inline-block;width:15px;height:15px;border:2px solid #cce5de;border-top-color:#14616a;border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}@media(max-width:760px){.layout,.grid{grid-template-columns:1fr}.card{padding:19px}main{margin-top:25px}}
+  </style>
+</head>
+<body>
+<header><div class="bar"><div class="brand">DECISION<span> / </span>BRIEF</div><div class="tag">Assignment prototype · Not affiliated with NIAT</div></div></header>
+<main id="app"></main>
+<script>
+const app=document.getElementById("app");
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const link=(url,label)=>'<a href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(label)+'</a>';
+const status=(msg,type="warn")=>'<div class="'+type+'">'+esc(msg)+'</div>';
+const qs=new URLSearchParams(location.search),parts=location.pathname.split("/").filter(Boolean);
+const id=parts[1],role=parts[0]==="case"?"reviewer":parts[0]==="family"?"family":"home";
+const credential=role==="reviewer"?qs.get("key"):qs.get("token");
+const api=(action="")=>"/api/cases/"+id+(action?"/"+action:"")+"?"+(role==="reviewer"?"key=":"token=")+encodeURIComponent(credential||"");
+async function request(url,method="GET",body) {
+  const r=await fetch(url,{method,headers:body?{"content-type":"application/json"}:{},body:body?JSON.stringify(body):undefined});
+  const x=await r.json().catch(()=>({error:"Invalid server response"}));
+  if(!r.ok) throw new Error(x.error||"Request failed");
+  return x;
+}
+const money=s=>s?esc(s):"<em>Not supplied</em>";
+function home() {
+  app.innerHTML='<div class="eyebrow">Layer 3 · Lead to sale</div><h1>Help a family make one clear decision.</h1>'+
+  '<p class="intro">Create a fictional post-counselling case. The system checks official NIAT facts, drafts a parent brief with AI, routes it through review, then collects family questions and a demo call request.</p>'+
+  '<div class="layout"><section class="card"><h2>Create a fictional case</h2><p>Use sample information only. Do not enter real student names, phone numbers, or actual fee quotes.</p>'+
+  '<form id="caseForm"><div class="grid"><div class="field"><label>Suggested university *</label><input name="university" required placeholder="Example Partner University"></div><div class="field"><label>City</label><input name="city" placeholder="Hyderabad"></div>'+
+  '<div class="field"><label>University degree fee</label><input name="universityFee" placeholder="Illustrative: ₹7,00,000 total"></div><div class="field"><label>Separate NIAT upskilling fee</label><input name="niatFee" placeholder="Illustrative: ₹3,00,000 total"></div>'+
+  '<div class="field"><label>Scholarship terms</label><input name="scholarship" placeholder="Illustrative: pending confirmation"></div><div class="field"><label>Hostel cost</label><input name="hostel" placeholder="Illustrative: ₹90,000 per year"></div></div>'+
+  '<div class="grid"><div class="field"><label>Student concern</label><textarea name="studentConcern" placeholder="I want more hands-on AI projects."></textarea></div><div class="field"><label>Parent concern</label><textarea name="parentConcern" placeholder="Who awards the degree, and what is the full cost?"></textarea></div></div>'+
+  '<div class="actions"><button type="submit">Create case</button><button type="button" class="secondary" id="sample">Load sample</button><span id="homeMsg"></span></div></form></section>'+
+  '<aside><div class="card"><div class="eyebrow">Connected workflow</div><div class="timeline"><div><b>01 · Record</b><br>D1 saves the fictional offer.</div><div><b>02 · Research and draft</b><br>AI calls a source tool for NIAT facts.</div><div><b>03 · Review</b><br>Flagged facts block family sharing.</div><div><b>04 · Decide together</b><br>Parent and student ask questions; AI triages them.</div><div><b>05 · Meet</b><br>A demo slot and calendar file close the loop.</div></div></div>'+
+  '<div class="card"><h3>Important distinction</h3><p>NIAT provides separate upskilling. A collaborating university decides admission and awards the degree. All case-level prices in this demo are illustrative.</p>'+
+  link("https://apply.niatindia.com/login-gnc/","Official NIAT admissions FAQ")+'</div></aside></div>';
+  document.getElementById("sample").onclick=()=>{
+    const f=document.getElementById("caseForm");
+    Object.entries({university:"Example Partner University",city:"Hyderabad",universityFee:"Illustrative ₹7,00,000 total",
+      niatFee:"Illustrative ₹3,00,000 total",scholarship:"Illustrative ₹50,000, subject to verification",
+      hostel:"Illustrative ₹90,000 per year",studentConcern:"Will I build AI projects in the first year?",
+      parentConcern:"Who awards the degree and what exactly is included in each fee?"}).forEach(([k,v])=>f.elements[k].value=v);
+  };
+  document.getElementById("caseForm").onsubmit=async e=>{
+    e.preventDefault();const f=e.currentTarget,m=document.getElementById("homeMsg");
+    m.innerHTML='<span class="spinner"></span>';
+    try{const x=await request("/api/cases","POST",Object.fromEntries(new FormData(f)));location.href=x.reviewUrl;}
+    catch(err){m.innerHTML=status(err.message,"error");}
+  };
+}
+let current=null;
+async function load() {
+  app.innerHTML='<div class="spinner"></div> Loading case';
+  try {current=await request(api());role==="reviewer"?reviewer():family();}
+  catch(e){app.innerHTML='<div class="card">'+status(e.message,"error")+'<a href="/">Start a new demo</a></div>';}
+}
+function offer(c) {
+  const x=c.input;return '<div class="row"><span>Suggested university</span><b>'+esc(x.university)+(x.city?', '+esc(x.city):'')+'</b></div>'+
+  '<div class="row"><span>University degree fee</span><b>'+money(x.universityFee)+'</b></div>'+
+  '<div class="row"><span>Separate NIAT upskilling fee</span><b>'+money(x.niatFee)+'</b></div>'+
+  '<div class="row"><span>Scholarship</span><b>'+money(x.scholarship)+'</b></div>'+
+  '<div class="row"><span>Hostel</span><b>'+money(x.hostel)+'</b></div>';
+}
+function draft(d) {
+  return '<div class="panel"><h3>AI prepared explanation</h3><p>'+esc(d.summary)+'</p><p>'+esc(d.whyItMatters)+'</p></div>'+
+    '<h3>Degree and responsibility</h3><p>'+esc(d.degree)+'</p><h3>Questions for the joint call</h3>'+
+    d.questions.map(q=>'<div class="question">'+esc(q)+'</div>').join("")+
+    '<h3>Source check</h3>'+d.sources.map(s=>'<div class="source">'+link(s.url,new URL(s.url).host)+
+      ' · <b>'+esc(s.status)+'</b> · '+esc(new Date(s.checkedAt).toLocaleString())+'</div>').join("");
+}
+function reviewer() {
+  const c=current,d=c.draft;
+  app.innerHTML='<div class="eyebrow">Reviewer workspace · fictional scenario</div><h1>Review the family brief.</h1>'+
+    '<p class="intro">AI prepares the explanation and questions. Case-level numbers remain exactly as entered. A reviewer must confirm all details before sharing.</p>'+
+    '<div class="layout"><section><div class="card"><div class="pill">'+esc(c.status)+'</div><h2 style="margin-top:14px">Case offer</h2>'+offer(c)+
+    '<p class="small">These figures are illustrative, not NIAT quotes.</p></div>'+
+    (d?'<div class="card"><h2>Draft brief</h2>'+draft(d)+(d.flags.length?d.flags.map(f=>status(f)).join(""):status("No blocking flags from the automated check. Verify the supplied offer before approval.","ok"))+
+    (d.reviewNotes?.length?'<p class="small">AI review notes: '+d.reviewNotes.map(esc).join(" · ")+'</p>':'')+
+    '<div class="actions"><button id="approve" '+(c.status==="approved"||d.flags.length?"disabled":"")+'>Approve for family</button><span id="reviewMsg"></span></div></div>':'<div class="card"><h2>Generate with AI</h2><p>The model will request current public NIAT sources, then prepare a draft. Missing fees or unavailable evidence are flagged.</p><div class="actions"><button id="generate">Research and draft</button><span id="reviewMsg"></span></div></div>')+
+    (c.status==="approved"?'<div class="card"><h2>Family link</h2><p>Share this demonstration link with a reviewer.</p><div class="copy" id="familyLink">'+esc(location.origin+c.familyUrl)+'</div><div class="actions"><button class="secondary" id="copyLink">Copy link</button><a class="ghost" style="padding:11px 15px;border-radius:10px;text-decoration:none" href="'+esc(c.familyUrl)+'" target="_blank">Open family view</a></div></div>':'')+
+    '<div class="card"><h2>Family activity</h2>'+(c.responses.length?c.responses.map(r=>'<div class="question"><b>'+esc(r.actor)+' · '+esc(r.category)+'</b><p>'+esc(r.question)+'</p><small>'+esc(r.englishSummary)+'<br>Next action: '+esc(r.suggestedCounsellorAction)+'</small></div>').join(""):'<p>No family questions yet.</p>')+
+    (c.slotId?status('Demo call reserved: '+new Date(c.slotId).toLocaleString("en-IN"),"ok"):'<p>No call slot reserved yet.</p>')+
+    '<button class="secondary" id="refresh">Refresh activity</button></div></section>'+
+    '<aside><div class="card"><h2>Activity log</h2>'+(c.sourceLog.length?'<div class="timeline">'+c.sourceLog.map(x=>'<div><b>'+esc(x.tool)+'</b><br>'+esc(x.result)+(x.url?' · '+link(x.url,"source"):'')+'</div>').join("")+'</div>':'<p>Generate a brief to see the data and AI steps.</p>')+'</div>'+
+    '<div class="card"><h3>What approval means here</h3><p>This is a candidate-operated prototype. Approval demonstrates a counsellor review gate; it is not a real NIAT verification.</p></div></aside></div>';
+  const g=document.getElementById("generate"),a=document.getElementById("approve"),m=document.getElementById("reviewMsg");
+  if(g)g.onclick=async()=>{g.disabled=true;m.innerHTML='<span class="spinner"></span> Checking sources and drafting';
+    try{await request(api("generate"),"POST",{});await load();}catch(e){g.disabled=false;m.innerHTML=status(e.message,"error");}};
+  if(a)a.onclick=async()=>{a.disabled=true;m.innerHTML='<span class="spinner"></span>';
+    try{await request(api("approve"),"POST",{});await load();}catch(e){a.disabled=false;m.innerHTML=status(e.message,"error");}};
+  const cp=document.getElementById("copyLink");if(cp)cp.onclick=()=>{navigator.clipboard.writeText(location.origin+c.familyUrl);cp.textContent="Copied";};
+  document.getElementById("refresh").onclick=load;
+}
+async function family() {
+  const c=current,d=c.draft;
+  app.innerHTML='<div class="eyebrow">Family decision room · fictional scenario</div><h1>One place to decide together.</h1>'+
+    '<p class="intro">Review the suggested option, raise the questions that matter to each of you, and reserve a demonstration call. This is not a real NIAT offer or appointment.</p>'+
+    '<div class="layout"><section><div class="card"><div class="pill">Reviewer approved demo</div><h2 style="margin-top:14px">'+esc(d.university)+'</h2>'+offer(c)+
+    '<p class="small">Illustrative scenario figures only. Confirm actual fees and admission with NIAT and the university.</p></div>'+
+    '<div class="card"><div style="display:flex;justify-content:space-between;gap:15px;align-items:center"><h2>What this means</h2><select id="language" style="max-width:160px"><option>English</option><option>Hindi</option><option>Telugu</option><option>Tamil</option><option>Kannada</option><option>Malayalam</option></select></div>'+
+    '<div id="translated">'+draft(d)+'</div><div id="translateMsg"></div></div>'+
+    '<div class="card"><h2>What still needs an answer?</h2><p>Parent and student can ask separately. AI groups the questions for a counsellor rather than making up an answer.</p>'+
+    '<form id="questionForm"><div class="grid"><div class="field"><label>I am the</label><select name="actor"><option>Parent</option><option>Student</option></select></div><div class="field"><label>Question language</label><select name="language"><option>English</option><option>Hindi</option><option>Telugu</option><option>Tamil</option><option>Kannada</option><option>Malayalam</option></select></div></div>'+
+    '<div class="field"><label>My question</label><textarea name="question" required placeholder="What does the separate upskilling fee cover?"></textarea></div><div class="actions"><button>Send question</button><span id="questionMsg"></span></div></form>'+
+    '<div id="responseList">'+(c.responses.length?c.responses.map(r=>'<div class="question"><b>'+esc(r.actor)+' · '+esc(r.category)+'</b><p>'+esc(r.question)+'</p><small>'+esc(r.englishSummary)+'</small></div>').join(""):'')+'</div></div></section>'+
+    '<aside><div class="card"><h2>Talk it through</h2><p>Reserve one 15-minute demo slot. The calendar file marks a fictional appointment only.</p>'+
+    (c.slotId?status('Reserved: '+new Date(c.slotId).toLocaleString("en-IN"),"ok")+'<a href="'+esc(api("ics"))+'">Download calendar file</a>':
+    '<div id="slots"><span class="spinner"></span></div><div class="actions"><button id="book">Reserve demo slot</button></div><div id="bookMsg"></div>')+'</div>'+
+    '<div class="card"><h3>Source boundaries</h3><p>General NIAT facts are linked to official pages. This demonstration does not determine university admission or a real fee.</p>'+
+    d.sources.map(s=>'<div class="source">'+link(s.url,new URL(s.url).host)+'</div>').join("")+'</div></aside></div>';
+  const lang=document.getElementById("language");
+  lang.onchange=async()=>{const box=document.getElementById("translated"),m=document.getElementById("translateMsg");
+    if(lang.value==="English"){box.innerHTML=draft(d);m.innerHTML="";return;}
+    m.innerHTML='<span class="spinner"></span> Translating';
+    try{const x=await request(api("translate"),"POST",{language:lang.value});
+      box.innerHTML='<div class="panel"><p>'+esc(x.translation.summary)+'</p><p>'+esc(x.translation.whyItMatters)+'</p></div>'+
+        '<h3>Costs and degree facts remain as shown above</h3>'+d.sources.map(s=>'<div class="source">'+link(s.url,new URL(s.url).host)+'</div>').join("");
+      m.innerHTML="";}catch(e){m.innerHTML=status(e.message,"error");}};
+  document.getElementById("questionForm").onsubmit=async e=>{e.preventDefault();const f=e.currentTarget,m=document.getElementById("questionMsg");
+    m.innerHTML='<span class="spinner"></span> Organizing';try{await request(api("respond"),"POST",Object.fromEntries(new FormData(f)));await load();}
+    catch(err){m.innerHTML=status(err.message,"error");}};
+  if(!c.slotId) {
+    try{const x=await request(api("slots"));document.getElementById("slots").innerHTML='<div class="field"><label>Available demo times (India time)</label><select id="slotSelect">'+
+      x.slots.map(s=>'<option value="'+esc(s.id)+'" '+(s.available?'':'disabled')+'>'+esc(new Date(s.id).toLocaleString("en-IN"))+(s.available?'':' · taken')+'</option>').join("")+'</select></div>';}
+    catch(e){document.getElementById("slots").innerHTML=status(e.message,"error");}
+    document.getElementById("book").onclick=async()=>{const m=document.getElementById("bookMsg");m.innerHTML='<span class="spinner"></span>';
+      try{await request(api("book"),"POST",{slot:document.getElementById("slotSelect").value});await load();}
+      catch(e){m.innerHTML=status(e.message,"error");}};
+  }
+}
+role==="home"?home():load();
+</script>
+</body></html>
